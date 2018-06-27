@@ -1,5 +1,7 @@
 package com.example.android.miwok;
 
+import android.content.Context;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
@@ -15,15 +17,16 @@ public class FamilyActivity extends AppCompatActivity {
     ListView listView;
     MediaPlayer mediaPlayer;
     Word word;
-    private MediaPlayer.OnCompletionListener onCompletionListener = mp -> {
-        releaseMediaPlayer();
-    };
+    AudioManager.OnAudioFocusChangeListener afChangeListener;
+    private AudioManager mAudioManager;
+    private MediaPlayer.OnCompletionListener onCompletionListener = mp -> releaseMediaPlayer();
 
     // release media player
     public void releaseMediaPlayer() {
         if (mediaPlayer != null) {
             mediaPlayer.release();
             mediaPlayer = null;
+            mAudioManager.abandonAudioFocus(afChangeListener);
         }
     }
 
@@ -31,6 +34,22 @@ public class FamilyActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.word_list);
+        //Audio Manager Focus
+        mAudioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        afChangeListener = focusChange -> {
+            if (focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT ||
+                    focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK) {
+                // Pause playback because your Audio Focus was
+                mediaPlayer.pause();
+                mediaPlayer.seekTo(0);
+            } else if (focusChange == AudioManager.AUDIOFOCUS_LOSS) {
+                // Stop playback, because you lost the Audio Focus.// i.e. the user started some other playback app
+                releaseMediaPlayer();
+            } else if (focusChange == AudioManager.AUDIOFOCUS_GAIN) {
+                // Resume playback, because you hold the Audio Focus
+                mediaPlayer.start();
+            }
+        };
         // Create a list of words
         ArrayList<Word> words = new ArrayList<>();
         words.add(new Word(R.string.family_father, R.string.miwok_family_father,
@@ -63,9 +82,19 @@ public class FamilyActivity extends AppCompatActivity {
             word = words.get(position);
             // release media player
             releaseMediaPlayer();
-            mediaPlayer = MediaPlayer.create(getApplicationContext(), word.getmAudioID());
-            mediaPlayer.start();
-            mediaPlayer.setOnCompletionListener(onCompletionListener);
+            int result = mAudioManager.requestAudioFocus(afChangeListener,
+                    // Use the music stream.
+                    AudioManager.STREAM_NOTIFICATION,
+                    // Request permanent focus.
+                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT);
+
+            if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+                // Start playback
+
+                mediaPlayer = MediaPlayer.create(getApplicationContext(), word.getmAudioID());
+                mediaPlayer.start();
+                mediaPlayer.setOnCompletionListener(onCompletionListener);
+            }
         });
     }
 
