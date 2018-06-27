@@ -15,6 +15,9 @@ public class PhrasesActivity extends AppCompatActivity {
     ListView listView;
     MediaPlayer mediaPlayer;
     Word word;
+    MediaPlayer.OnCompletionListener onCompletionListener = mp -> {
+        releaseMediaPlayer();
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,9 +54,25 @@ public class PhrasesActivity extends AppCompatActivity {
         listView.setAdapter(itemsAdapter);
         listView.setOnItemClickListener((parent, view, position, id) -> {
             word = words.get(position);
+            //release media player before creation
+            releaseMediaPlayer();
             mediaPlayer = MediaPlayer.create(getApplicationContext(), word.getmAudioID());
             mediaPlayer.start();
+            mediaPlayer.setOnCompletionListener(onCompletionListener);
         });
+    }
 
+    // release media player
+    public void releaseMediaPlayer() {
+        if (mediaPlayer != null) {
+            mediaPlayer.release();
+            mediaPlayer = null;
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        releaseMediaPlayer();
     }
 }

@@ -15,6 +15,17 @@ public class ColorsActivity extends AppCompatActivity {
     ListView listView;
     MediaPlayer mediaPlayer;
     Word word;
+    private MediaPlayer.OnCompletionListener onCompletionListener = mp -> {
+        releaseMediaPlayer();
+    };
+
+    // release media player
+    public void releaseMediaPlayer() {
+        if (mediaPlayer != null) {
+            mediaPlayer.release();
+            mediaPlayer = null;
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,8 +58,17 @@ public class ColorsActivity extends AppCompatActivity {
         listView.setAdapter(itemsAdapter);
         listView.setOnItemClickListener((parent, view, position, id) -> {
             word = words.get(position);
+            //Release media player
+            releaseMediaPlayer();
             mediaPlayer = MediaPlayer.create(getApplicationContext(), word.getmAudioID());
             mediaPlayer.start();
+            mediaPlayer.setOnCompletionListener(onCompletionListener);
         });
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        releaseMediaPlayer();
     }
 }
